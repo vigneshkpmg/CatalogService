@@ -3,16 +3,24 @@ import environment from './env'
 import logger from '../provider/logger'
 
 class RedisClient {
-  private redis
-  constructor() {
-    this.redis = new Redis({
-      port: environment.config().redisHttpPort,
-      host: environment.config().redisHttpHost,
-    })
-  }
-  async getCachedData(key: string = 'catalog'): Promise<any> {
+  private redis: Redis | undefined
+
+  public async Init(): Promise<void> {
     try {
-      const result = await this.redis.get(key)
+      this.redis = new Redis({
+        port: environment.config().redisHttpPort,
+        host: environment.config().redisHttpHost,
+      })
+      if (!(await this.CheckHealth())) {
+        throw new Error('Redis connection error.')
+      }
+    } catch (error) {
+      logger.error('Error while connecting to Redis', error)
+    }
+  }
+  async getCachedData(key = 'catalog'): Promise<any> {
+    try {
+      const result = await this.redis?.get(key)
       if (result) {
         return JSON.parse(result)
       }
@@ -24,11 +32,11 @@ class RedisClient {
 
   async setCacheData(
     value: any,
-    key: string = 'catalog',
-    expiration: number = 3600
+    key = 'catalog',
+    expiration = 3600
   ): Promise<void> {
     try {
-      await this.redis.setex(key, expiration, JSON.stringify(value))
+      await this.redis?.setex(key, expiration, JSON.stringify(value))
     } catch (error) {
       logger.error(
         `Error while setting cache for key : ${key} and value : ${value}`,
@@ -37,16 +45,26 @@ class RedisClient {
     }
   }
 
-  async deleteCacheData(key: string = 'catalog'): Promise<void> {
+  async deleteCacheData(key = 'catalog'): Promise<void> {
     try {
-      await this.redis.del(key)
+      await this.redis?.del(key)
     } catch (error) {
       logger.error(`Error while deleteing cache for key : ${key}`, error)
     }
   }
 
   async clearCache(): Promise<void> {
-    await this.redis.flushdb()
+    await this.redis?.flushdb()
+  }
+
+  async CheckHealth(): Promise<boolean> {
+    try {
+      await this.redis?.ping()
+      return true
+    } catch (error) {
+      logger.error(`Error while connecting to redis`, { error: error } )
+      return false
+    }
   }
 }
 export default new RedisClient()

@@ -12,7 +12,7 @@ class orderStockRejected extends IIntegrationEvent {
 }
 
 class confirmedOrderStockItem {
-  public orderItemId: Number
+  public orderItemId: number
   public hasStock: boolean
   /**
    *

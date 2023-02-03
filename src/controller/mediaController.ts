@@ -29,7 +29,7 @@ class mediaController {
         `Container was created successfully.\n\trequestId:${createContainerResponse.requestId}\n\tURL: ${containerClient.url}`
       )
 
-      let results: any = []
+      const results: any = []
       await Promise.all(
         req.files.map(async (file: any) => {
           // Get a block blob client
@@ -73,7 +73,7 @@ class mediaController {
       const blobList = containerClient
         .listBlobsFlat()
         .byPage({ maxPageSize: 5 })
-      let results: string[] = []
+      const results: string[] = []
       for await (const blob of blobList) {
         for (const item of blob.segment.blobItems) {
           const blockBlobClient = containerClient.getBlockBlobClient(item.name)

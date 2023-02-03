@@ -30,7 +30,7 @@ class IntegrationEventEntry {
     eventId: string,
     state: string = eventState.NotPublished.toString(),
     eventDetail: IIntegrationEvent,
-    count: number = 0
+    count = 0
   ) {
     this.eventName = eventDetail.eventName
     this.eventdate = eventDetail.eventDate

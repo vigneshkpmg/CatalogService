@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
@@ -8,6 +8,12 @@ services:
     image: redis:latest
   mongo:
     container_name: catalogService-mongo
+    image: mongo:latest
+  mongo1:
+    container_name: catalogService-mongo1
+    image: mongo:latest
+  mongo2:
+    container_name: catalogService-mongo2
     image: mongo:latest
   app:
     container_name: catalogService

@@ -1,4 +1,12 @@
-import winston from 'winston'
+import {
+  createLogger,
+  format,
+  transports,
+  addColors,
+  Logger as winstonLogger,
+  level,
+} from 'winston'
+const { combine, timestamp, printf, errors, colorize, label } = format
 
 class Logger {
   // This method set the current severity based on
@@ -11,67 +19,89 @@ class Logger {
     return isDevelopment ? 'debug' : 'warn'
   }
 
-  public static Init = (): winston.Logger => {
-    // Define your severity levels.
-    // With them, You can create log files,
-    // see or hide levels based on the running ENV.
-    const levels = {
-      error: 0,
-      warn: 1,
-      info: 2,
-      http: 3,
-      debug: 4,
-    }
+  public static Init = (): winstonLogger => {
+    const httpRequestFormat = printf(info => {
+      const { timestamp, message } = info
+      const parsedMessage = JSON.parse(message)
+      const { ip, method, url, httpVersion, headers } = parsedMessage
+      return `[${timestamp}]:  ${method}  ${url}  HTTP/${httpVersion}  ${
+        headers.referrer ?? '-'
+      }  ${headers['user-agent']}  ${ip}`
+    })
 
-    // Define different colors for each level.
-    // Colors make the log message more visible,
-    // adding the ability to focus or ignore messages.
-    const colors = {
-      error: 'red',
-      warn: 'yellow',
-      info: 'green',
-      http: 'magenta',
-      debug: 'white',
-    }
+    const errorFormat = printf(i => {
+      const { timestamp, message, label, ...meta } = i
+      return `[${timestamp}] [${label ?? ''}]: ${message}  ${meta.error.stack ?? ''}`
+    })
+    const consoleFormat = printf(info => {
+      return info.level == 'error' ?`${info.timestamp} [${info.label}] ${info.level} : ${info.message} ${info.meta.error}`:
+        `${info.timestamp} [${info.label}] ${info.level} : ${info.message}`
+    })
 
-    // Tell winston that you want to link the colors
-    // defined above to the severity levels.
-    winston.addColors(colors)
+    //filter
+    const httpFilter = format((info) => {
+      return info.level == 'http' ? info : false
+    })
 
-    // Chose the aspect of your log customizing the log format.
-    const format = winston.format.combine(
-      // Add the message timestamp with the preferred format
-      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-      // Tell Winston that the logs must be colored
-      winston.format.colorize({ all: true }),
-      // Define the format of the message showing the timestamp, the level and the message
-      winston.format.printf(
-        info => `${info.timestamp} ${info.level}: ${info.message}`
-      )
-    )
+    const errorFilter = format((info) => {
+      return info.level == 'error' ? info : false
+    })
+    //transport
+    const consoleTransport = new transports.Console({
+      format: combine(
+        colorize(),
+        label({ label: 'CatalogService' }),
+        timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss',
+        }),
+        consoleFormat
+      ),
+    })
+    const httpRequestTransport = new transports.File({
+      level: 'http',
+      filename: `./logs/httpRequests.log`,
+      format: combine(
+        label({ label: 'CatalogService' }),
+        httpFilter(),
+        timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss',
+        }),
+        httpRequestFormat
+      ),
+    })
+    const errorTransport = new transports.File({
+      level: 'error',
+      filename: `./logs/errors.log`,
+      format: combine(
+        label({ label: 'CatalogService' }),
+        errorFilter(),
+        timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss',
+        }),
+        errorFormat
+      ),
+    })
+    const exceptionTransport = new transports.File({
+      filename: `./logs/exceptions.log`,
+    })
 
-    // Define which transports the logger must use to print out messages.
-    // In this example, we are using three different transports
-    const transports = [
-      // Allow the use the console to print the messages
-      new winston.transports.Console(),
-      // Allow to print all the error level messages inside the error.log file
-      new winston.transports.File({
-        filename: 'logs/error.log',
-        level: 'error',
-      }),
-      // Allow to print all the error message inside the all.log file
-      // (also the error log that are also printed inside the error.log(
-      new winston.transports.File({ filename: 'logs/all.log' }),
-    ]
+    const rejectionTransport = new transports.File({
+      filename: `./logs/rejections.log`,
+    })
 
-    // Create the logger instance that has to be exported
-    // and used to log messages.
-    const logger = winston.createLogger({
-      level: this.level(),
-      levels,
-      format,
-      transports,
+    const logger = createLogger({
+      level: process.env.NODE_ENV === 'PROD' ? 'info' : 'debug',
+      format: combine(errors({ stack: true })),
+      transports: [httpRequestTransport, errorTransport, consoleTransport],
+      exceptionHandlers: [exceptionTransport],
+      rejectionHandlers: [rejectionTransport],
+      handleExceptions: true,
+      handleRejections: true,
+    })
+
+    addColors({
+      debug: 'yellow',
+      info: 'blue',
     })
     return logger
   }

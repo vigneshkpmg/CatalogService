@@ -40,7 +40,7 @@ class KafkaProvider {
       // }
     })
     this.Producer = this.kafkaInstance.producer({
-      allowAutoTopicCreation: false,
+      allowAutoTopicCreation: true,
       transactionTimeout: 30000,
     })
   }

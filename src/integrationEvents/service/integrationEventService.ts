@@ -26,11 +26,13 @@ class integrationEventService implements IIntegrationEventService {
     try {
       await session.withTransaction(
         async () => {
-          const catalogCol = await integrationEventEntry.createCollection()
-          const eventCol = await catalog.createCollection()
+          // const eventCol  = await integrationEventEntry.createCollection()
+          // const catalogCol = await catalog.createCollection()
           // Important:: You must pass the session to the operations
-          await eventCol.insertOne(newIntegrationEvent, { session })
-          await catalogCol.updateOne(
+          await integrationEventEntry.insertMany(newIntegrationEvent, {
+            session,
+          })
+          await catalog.findOneAndUpdate(
             catalogRequest.id,
             catalogRequest.request,
             { session: session, upsert: true }
@@ -46,7 +48,7 @@ class integrationEventService implements IIntegrationEventService {
       logger.error('error from saveEventAndCatalog method ', err)
     } finally {
       session.endSession()
-      logger.error('Mongo transaction session ended.')
+      logger.info('Mongo transaction session ended.')
     }
   }
 
@@ -55,27 +57,19 @@ class integrationEventService implements IIntegrationEventService {
       `Integration event is getting published: event id: ${integrationEvent.eventId} and event name: ${integrationEvent.eventName}`
     )
     //Need to create new collection and make entry saying Event publishing is inprogress
-    const newIntegrationEvent = new integrationEventEntry({
-      eventName: integrationEvent.eventName,
-      eventdate: integrationEvent.eventDate,
-      eventState: eventState.inprogress,
-      content: integrationEvent,
-      eventId: integrationEvent.eventId,
-    })
     try {
       await integrationEventEntry.findOneAndUpdate(
-        { eventId: newIntegrationEvent.eventId },
-        newIntegrationEvent
+        { eventId: integrationEvent.eventId },
+        { eventState: eventState[eventState.inprogress] }
       )
       //And publish event to event bus
       const messages: Message[] = []
       messages.push({ key: 'eventId', value: JSON.stringify(integrationEvent) })
       await kafka.Send(messages, integrationEvent.eventName)
       //Make event status to published from in progress.
-      newIntegrationEvent.eventState = eventState[eventState.published]
       await integrationEventEntry.findOneAndUpdate(
-        { eventId: newIntegrationEvent.eventId },
-        newIntegrationEvent
+        { eventId: integrationEvent.eventId },
+        { eventState: eventState[eventState.published] }
       )
     } catch (err) {
       logger.error('error from publisheEvent In IIntegrationEventService ', err)

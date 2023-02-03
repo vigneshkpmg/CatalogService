@@ -7,6 +7,8 @@ import cors from 'cors'
 import helmet from 'helmet'
 import * as winston from 'winston'
 import * as winstonExpress from 'express-winston'
+import healthCheckRouter from '../../router/healthCheckRouter'
+import correlator from 'express-correlation-id'
 
 class Express {
   /**
@@ -19,7 +21,6 @@ class Express {
    */
   constructor() {
     this.express = express()
-
     this.mountDotEnv()
     this.mountMiddlewares()
     this.mountRoutes()
@@ -34,6 +35,7 @@ class Express {
    */
   private mountMiddlewares(): void {
     // this.express = Bootstrap.init(this.express);
+    this.express.use(correlator)
     this.express.use(helmet())
     this.express.use(cors())
     this.express.use(express.json())
@@ -62,6 +64,7 @@ class Express {
       catalogRouter
     )
     this.express.use(`/${environment.config().apiPrefix}/media`, mediaRouter)
+    this.express.use('/', healthCheckRouter)
   }
 
   /**

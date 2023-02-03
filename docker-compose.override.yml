@@ -1,11 +1,63 @@
-version: "3.9"
+version: '3.9'
 services:
   mongo:
     restart: always
     volumes:
-      - ./data:/data/db
+      - ./data/mongo:/data/db
     ports:
       - 27017:27017
+    depends_on:
+      - mongo1
+      - mongo2
+    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'dbrs']
+  mongo1:
+    restart: always
+    volumes:
+      - ./data/mongo1:/data/db
+    ports:
+      - 27018:27017
+    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'dbrs']
+  mongo2:
+    restart: always
+    volumes:
+      - ./data/mongo2:/data/db
+    ports:
+      - 27019:27017
+    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'dbrs']
+  mongoinit:
+    image: mongo:latest
+    # this container will exit after executing the command
+    restart: 'no'
+    depends_on:
+      - mongo
+      - mongo1
+      - mongo2
+    command: >
+      mongo --host mongo:27017 --eval 
+      '
+      db = (new Mongo("localhost:27017")).getDB("test");
+      config = {
+      "_id" : "dbrs",
+      "members" : [
+        {
+          "_id" : 0,
+          "host" : "catalogService-mongo:27017",
+          "priority": 3
+        },
+        {
+          "_id" : 1,
+          "host" : "catalogService-mongo1:27017",
+          "priority": 2
+        },
+        {
+          "_id" : 2,
+          "host" : "catalogService-mongo2:27017",
+          "priority": 1
+        }
+      ]
+      };
+      rs.initiate(config);
+      '
   app:
     container_name: catalogService
     restart: always
@@ -14,7 +66,10 @@ services:
       dockerfile: Dockerfile.dev
     env_file: development.env
     environment:
-      - MONGOOSE_URL=mongodb://mongo:27017/catalog
+      - MONGOOSE_URL=mongodb://mongo:27017,mongo1:27017,mongo2:27017/catalog?replicaSet=dbrs
+      - REDIS_QUEUE_PORT=6379
+      - REDIS_QUEUE_HOST=redis
+      - PORT=7000
     ports:
       - 7000:7000
     depends_on:
@@ -25,7 +80,7 @@ services:
       - 6379:6379
     restart: always
     volumes:
-      - ./data:/data/redis
+      - ./data/redis:/data/redis
   zookeeper:
     environment:
       - ZOOKEEPER_CLIENT_PORT=2181

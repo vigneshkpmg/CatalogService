@@ -39,8 +39,8 @@ interface Icatalog {
 interface IEquipmentCatalog extends Icatalog {
   equipmentRentPrice: number
   isOperatorAvailable: boolean
-  operatorPrice: Number
-  operatorCount: Number
+  operatorPrice: number
+  operatorCount: number
 }
 
 interface IadditionalDetails {

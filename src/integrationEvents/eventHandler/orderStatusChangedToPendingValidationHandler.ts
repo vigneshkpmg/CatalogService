@@ -15,9 +15,9 @@ class orderStatusChangedToPendingValidationHandler
     logger.info(
       `Integration event is getting consumed: event id: ${integrationEvent.eventId} and event name: ${integrationEvent.eventName}`
     )
-    let availableItems: confirmedOrderStockItem[] = []
+    const availableItems: confirmedOrderStockItem[] = []
     for await (const item of integrationEvent.orderItems) {
-      var product = await catalog.findById(item.productId)
+      const product = await catalog.findById(item.productId)
       if (product) {
         const hasStock = product!.quantity >= item.quantity
         availableItems.push(new confirmedOrderStockItem(product?.id, hasStock))
