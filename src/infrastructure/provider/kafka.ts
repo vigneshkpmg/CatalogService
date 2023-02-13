@@ -70,7 +70,7 @@ class KafkaProvider {
     try {
       await axios(requestValSchema)
     } catch (error) {
-      logger.error('Error while registering the schema', error)
+      logger.error('Error while registering the schema', { error })
     }
   }
 }

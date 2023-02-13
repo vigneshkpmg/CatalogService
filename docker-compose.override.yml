@@ -1,4 +1,8 @@
 version: '3.9'
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
 services:
   mongo:
     restart: always
@@ -10,6 +14,11 @@ services:
       - mongo1
       - mongo2
     entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'dbrs']
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo -u mongo -p mongo --quiet) -eq 1
+      interval: 10s
+      start_period: 30s
+
   mongo1:
     restart: always
     volumes:
@@ -30,10 +39,8 @@ services:
     restart: 'no'
     depends_on:
       - mongo
-      - mongo1
-      - mongo2
     command: >
-      mongo --host mongo:27017 --eval 
+      mongo --host mongo:27017 --eval
       '
       db = (new Mongo("localhost:27017")).getDB("test");
       config = {
@@ -43,16 +50,6 @@ services:
           "_id" : 0,
           "host" : "catalogService-mongo:27017",
           "priority": 3
-        },
-        {
-          "_id" : 1,
-          "host" : "catalogService-mongo1:27017",
-          "priority": 2
-        },
-        {
-          "_id" : 2,
-          "host" : "catalogService-mongo2:27017",
-          "priority": 1
         }
       ]
       };
@@ -187,3 +184,75 @@ services:
       - KAFKA_REST_BOOTSTRAP_SERVERS=broker:29092
       - KAFKA_REST_LISTENERS=http://0.0.0.0:8082
       - KAFKA_REST_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+
+  prometheus:
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  nodeexporter:
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    ports:
+      - 9100:9100
+    labels:
+      org.label-schema.group: 'monitoring'
+
+  grafana:
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    labels:
+      org.label-schema.group: 'monitoring'
+  loki:
+    ports:
+      - '3100:3100'
+    command:
+      - --config.file=/mnt/config/loki.yaml
+    volumes:
+      - ./grafana/provisioning/loki.yaml:/mnt/config/loki.yaml:ro
+  tempo:
+    image: grafana/tempo:latest
+    command: ['-config.file=/etc/tempo.yaml']
+    volumes:
+      - ./grafana/provisioning/tempo.yaml:/etc/tempo.yaml
+      - ./tempo-data/:/tmp/tempo
+    ports:
+      - '14268:14268' # jaeger ingest
+      - '3200:3200' # tempo
+      - '4317:4317' # otlp grpc
+      - '4318:4318' # otlp http
+      - '9411:9411' # zipkin
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ['--config=/etc/otel-collector.yaml']
+    volumes:
+      - ./grafana/provisioning/otel-collector.yaml:/etc/otel-collector.yaml

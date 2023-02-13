@@ -1,14 +1,19 @@
 import express from 'express'
-
 import environment from './env'
 import catalogRouter from '../../router/catalogRouter'
 import mediaRouter from '../../router/mediaRouter'
 import cors from 'cors'
 import helmet from 'helmet'
-import * as winston from 'winston'
-import * as winstonExpress from 'express-winston'
 import healthCheckRouter from '../../router/healthCheckRouter'
-import correlator from 'express-correlation-id'
+import metricsProvider from '../../middleware/metricsMiddleware'
+import promo from "express-prometheus-middleware"
+import audit from "express-requests-logger"
+import logger from './logger'
+import tracer from "cls-rtracer"
+//import { addTraceId } from '../../utils/tracing'
+
+
+
 
 class Express {
   /**
@@ -33,26 +38,37 @@ class Express {
   /**
    * Mounts all the defined middlewares
    */
-  private mountMiddlewares(): void {
-    // this.express = Bootstrap.init(this.express);
-    this.express.use(correlator)
+  private async mountMiddlewares(): Promise<void> {
+
+    // this.express.use(tracer.expressMiddleware({
+    //    useHeader: true,
+    //    headerName: 'x-correlation-id',
+    //    echoHeader:true
+    // }))
+    //this.express.use(addTraceId)
+    this.express.use(promo({
+      metricsPath: '/metrics',
+      collectDefaultMetrics: true,
+      requestDurationBuckets: [0.1, 0.5, 1, 1.5],
+      requestLengthBuckets: [512, 1024, 5120, 10240, 51200, 102400],
+      responseLengthBuckets: [512, 1024, 5120, 10240, 51200, 102400]
+    }))
+
     this.express.use(helmet())
     this.express.use(cors())
     this.express.use(express.json())
-    // this.express.use(morgan.default("combined"));
-    this.express.use(
-      winstonExpress.logger({
-        transports: [new winston.transports.Console()],
-        format: winston.format.combine(
-          winston.format.colorize(),
-          winston.format.json()
-        ),
-        meta: true, // optional: control whether you want to log the meta data about the request (default to true)
-        msg: 'HTTP {{req.method}} {{req.url}}', // optional: customize the default logging message. E.g. "{{res.statusCode}} {{req.method}} {{res.responseTime}}ms {{req.url}}"
-        expressFormat: true, // Use the default Express/morgan request formatting. Enabling this will override any msg if true. Will only output colors with colorize set to true
-        colorize: true, // Color the text and status code, using the Express/morgan color palette (text: gray, status: default green, 3XX cyan, 4XX yellow, 5XX red).
-      })
-    )
+    this.express.use(audit({
+    logger: logger, // Existing bunyan logger
+    excludeURLs: ['health', 'metrics'], // Exclude paths which enclude 'health' & 'metrics'
+    request: {
+        maskBody: ['password'], // Mask 'password' field in incoming requests
+        excludeHeaders: ['authorization'], // Exclude 'authorization' header from requests
+    }
+}))
+   
+    this.express.use(metricsProvider.requestCounters)
+    this.express.use(metricsProvider.responseCounters)
+    metricsProvider.startCollection()
   }
 
   /**
@@ -65,6 +81,7 @@ class Express {
     )
     this.express.use(`/${environment.config().apiPrefix}/media`, mediaRouter)
     this.express.use('/', healthCheckRouter)
+    // this.express.use(`/metrics`, metricsRouter )
   }
 
   /**
@@ -88,3 +105,7 @@ class Express {
 
 /** Export the express module */
 export default new Express()
+function uuidv4() {
+  throw new Error('Function not implemented.')
+}
+

@@ -18,7 +18,7 @@ class catalogController {
       }
       res.status(200).send({ data: catalogList })
     } catch (error) {
-      logger.error('Error while fetching list of catalog', error)
+      logger.error('Error while fetching list of catalog',{error})
       res.status(500).send('Internal server error !')
     }
   }
@@ -36,7 +36,7 @@ class catalogController {
       }
       res.status(200).send({ data: catalogData })
     } catch (error) {
-      logger.error('Error while fetching catalog by id', error)
+      logger.error('Error while fetching catalog by id', { error })
       res.status(500).send('Internal server error !')
     }
   }
@@ -65,7 +65,7 @@ class catalogController {
       await redis.deleteCacheData()
       res.status(201).send(result)
     } catch (error) {
-      logger.error('Error while saving catalog', error)
+      logger.error('Error while saving catalog', { error })
       res.status(500).send('Internal server error!')
     }
   }
@@ -80,7 +80,7 @@ class catalogController {
       await redis.deleteCacheData(id)
       res.status(200).send()
     } catch (error) {
-      logger.error('Error while updating catalog by id', error)
+      logger.error('Error while updating catalog by id', { error })
       res.status(500).send('Internal server error !')
     }
   }
@@ -94,7 +94,7 @@ class catalogController {
       await redis.deleteCacheData(req.params.id)
       res.status(204).send(result)
     } catch (error) {
-      logger.error('Error while deleting catalog by id', error)
+      logger.error('Error while deleting catalog by id', { error })
       res.status(500).send('Internal server error !')
     }
   }
@@ -127,8 +127,8 @@ class catalogController {
 
       await redis.deleteCacheData(id)
       res.status(200).send()
-    } catch (error) {
-      logger.error('Error while patching catalog by id', error)
+    } catch (error:any) {
+      logger.error('Error while patching catalog by id', { error })
       res.status(500).send('Internal server error !')
     }
   }

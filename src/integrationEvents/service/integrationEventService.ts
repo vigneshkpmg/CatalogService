@@ -45,7 +45,7 @@ class integrationEventService implements IIntegrationEventService {
         }
       )
     } catch (err) {
-      logger.error('error from saveEventAndCatalog method ', err)
+      logger.error('error from saveEventAndCatalog method ', { err })
     } finally {
       session.endSession()
       logger.info('Mongo transaction session ended.')
@@ -72,7 +72,7 @@ class integrationEventService implements IIntegrationEventService {
         { eventState: eventState[eventState.published] }
       )
     } catch (err) {
-      logger.error('error from publisheEvent In IIntegrationEventService ', err)
+      logger.error('error from publisheEvent In IIntegrationEventService ', { err })
     }
   }
 }

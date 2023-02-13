@@ -15,7 +15,7 @@ class RedisClient {
         throw new Error('Redis connection error.')
       }
     } catch (error) {
-      logger.error('Error while connecting to Redis', error)
+      logger.error('Error while connecting to Redis', { error })
     }
   }
   async getCachedData(key = 'catalog'): Promise<any> {
@@ -26,7 +26,7 @@ class RedisClient {
       }
       return null
     } catch (error) {
-      logger.error(`Error while getting a cache for key : ${key}`, error)
+      logger.error(`Error while getting a cache for key : ${key}`, { error })
     }
   }
 
@@ -40,7 +40,7 @@ class RedisClient {
     } catch (error) {
       logger.error(
         `Error while setting cache for key : ${key} and value : ${value}`,
-        error
+        { error }
       )
     }
   }
@@ -49,7 +49,7 @@ class RedisClient {
     try {
       await this.redis?.del(key)
     } catch (error) {
-      logger.error(`Error while deleteing cache for key : ${key}`, error)
+      logger.error(`Error while deleteing cache for key : ${key}`, { error })
     }
   }
 
@@ -62,7 +62,7 @@ class RedisClient {
       await this.redis?.ping()
       return true
     } catch (error) {
-      logger.error(`Error while connecting to redis`, { error: error } )
+      logger.error(`Error while connecting to redis`, { error } )
       return false
     }
   }

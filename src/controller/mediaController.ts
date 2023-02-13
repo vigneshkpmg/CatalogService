@@ -48,7 +48,7 @@ class mediaController {
         .status(201)
         .send({ data: { file: results }, container: containerName })
     } catch (error) {
-      logger.error('Error while saving media', error)
+      logger.error('Error while saving media', { error })
       return res.status(500).send('Internal server error !')
     }
   }
@@ -90,7 +90,7 @@ class mediaController {
       }
       return res.status(200).send({ data: { value: results } })
     } catch (error) {
-      logger.error('Error while saving media', error)
+      logger.error('Error while saving media', { error })
       return res.status(500).send('Internal server error !')
     }
   }
@@ -100,7 +100,7 @@ class mediaController {
   private static async removeUplodedFile(filename: string) {
     fs.unlink(`./uploads/${filename}`, err => {
       if (err) {
-        logger.error('Error while deleting a file locally', err)
+        logger.error('Error while deleting a file locally', { err })
       }
       logger.info(`./uploads/${filename} got deleted`)
     })
