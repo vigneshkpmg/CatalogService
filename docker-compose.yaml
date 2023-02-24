@@ -95,3 +95,5 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector:latest
     container_name: otel-collector
+  jaeger:
+    image: jaegertracing/all-in-one:latest
