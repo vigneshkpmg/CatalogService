@@ -1,5 +1,7 @@
 # Catalog Service
-*Its a service responsible for all the catalog related operations. It uses node.js, express.js, mongo db and Redis cache. Uses Auth0 for authentication/autorization. This api contains route for catalog and image operations.*
+
+Its a service responsible for all the catalog related operations. It uses node.js, express.js, mongo db and Redis cache. Uses Auth0 for authentication/autorization. This api contains route for catalog and image operations. It also implements Tracing and logging using open telemetry and Grafana.
+This catalog service will send message to kafka whenever there is change in product price and then there is Kafka Consumer(Check KafkaConsumer Repo) written in Dot.net 6 which consumes this message and then make Http call to Basket Service(Check Basker Service repo) to update the price.
 
 ## How to set up
 
@@ -12,14 +14,12 @@
 7. Then you can do npm run dev which should start server or even docker will start the server if you just want to test and don't want to debug.
 
 ## Pending items
+
 1. Auth0 integration.
-2. Kafka integration for event notification.
-3. Redis caching
 
-## environment key's 
-|Variable                                         |Description
-|-------------------------------------------------|----------------------------------------|
-|AZURE_STORAGE_ACCOUNT_NAME                       | Blob storage account                                       |
-|AZURE_STORAGE_CONNECTION_STRING                  |  blob storage connection string                                      |
+## environment key's
 
-
+| Variable                        | Description                    |
+| ------------------------------- | ------------------------------ |
+| AZURE_STORAGE_ACCOUNT_NAME      | Blob storage account           |
+| AZURE_STORAGE_CONNECTION_STRING | blob storage connection string |
